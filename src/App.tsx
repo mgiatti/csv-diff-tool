@@ -5,11 +5,11 @@ import CSVReader from 'react-csv-reader'
 
 function App() {
 
-  const [colNumDiff, setColNumDiff] = useState<number>(0);
+  const [colNumDiff, setColNumDiff] = useState<number>(10);
   const [pkKeyColNum, setPkKeyColNum] = useState<number>(0);
-  const [databaseName, setDatabaseName] = useState<string>('');
-  const [columnName, setColumnName] = useState<string>('');
-  const [pkColumnName, setPkColumnName] = useState<string>('');
+  const [databaseName, setDatabaseName] = useState<string>('BLUADMIN.IBV_FUNDING');
+  const [columnName, setColumnName] = useState<string>('REQUEST_DESCRIPTION');
+  const [pkColumnName, setPkColumnName] = useState<string>('ID_FUNDING');
   const [slctDiffType, setSlctDiffType] = useState<string>('diffPartial');
   const [dataFrom, setDataFrom] = useState<any[]>([]);
   const [dataTo, setDataTo] = useState<any[]>([]);
@@ -23,7 +23,11 @@ function App() {
   }
 
   function extractData(dataExtract:any[]){
-    return dataExtract.map((data) => [data[pkKeyColNum], data[colNumDiff]]);
+    return dataExtract.map((data) =>{
+      const columnVal = (data[colNumDiff]) ? data[colNumDiff].trim() : data[colNumDiff];
+      return [data[pkKeyColNum], columnVal ]
+    } 
+    );
   }
 
   function colNumChange(e:any){
@@ -53,6 +57,8 @@ function App() {
   function startDiff(){
     if(slctDiffType === "diffPartial"){
       applyPartialDiff();
+    }else if(slctDiffType === "diffMoreThan"){
+      applyMoreThanDiff();
     }else if(slctDiffType === "diffTotal"){
       applyTotalDiff();
     }
@@ -66,18 +72,22 @@ function App() {
     const newDataFiltered = newData.filter((data)=> ids.includes(data[pkKeyColNum])).sort();
     oldData.sort();
     setFilteredData(oldData.map((data:any, index:number)=>{
-      const oldDataStr = data[1];
-      const oldDataLength = oldDataStr.length;
-      const newDataStr:string = newDataFiltered[index][1];
-      const newDataLength = newDataStr.length;
       let hasDiff = false;
-      console.log(oldDataLength);
-      console.log(newDataLength);
-      if(oldDataLength > newDataLength){
-        console.log("entrou");
-        const subStr = oldDataStr.substring(0, newDataLength);
-        console.log(subStr);
-        hasDiff = newDataStr === subStr;
+      const oldDataStr = data[1];
+      const newDataStr:string = newDataFiltered[index][1];
+      if(oldDataStr && newDataStr){
+        const oldDataLength = oldDataStr.length;
+        const newDataLength = newDataStr.length;
+       
+        console.log(oldDataLength);
+        console.log(newDataLength);
+        if(oldDataLength > newDataLength){
+          console.log("entrou");
+          const subStr = oldDataStr.substring(0, newDataLength);
+          console.log(subStr);
+          console.log(newDataStr);
+          hasDiff = newDataStr === subStr;
+        }
       }
       return [
         data[0],
@@ -85,6 +95,36 @@ function App() {
         newDataFiltered[index][1],
         hasDiff
       ]
+      
+    } ).filter((data:any) => data[3]));
+  }
+
+  function applyMoreThanDiff(){
+    console.log("applyMoreThanDiff");
+    const oldData = extractData(dataFrom);
+    const newData = extractData(dataTo);
+    const ids = oldData.map(data => data[pkKeyColNum]);
+    const newDataFiltered = newData.filter((data)=> ids.includes(data[pkKeyColNum])).sort();
+    oldData.sort();
+    setFilteredData(oldData.map((data:any, index:number)=>{
+      let hasDiff = false;
+      const oldDataStr = data[1];
+      const newDataStr:string = newDataFiltered[index][1];
+      if(oldDataStr && newDataStr){
+        const oldDataLength = oldDataStr.length;
+        const newDataLength = newDataStr.length;
+       
+        console.log(oldDataLength);
+        console.log(newDataLength);
+        hasDiff = oldDataLength > newDataLength;
+      }
+      return [
+        data[0],
+        data[1],
+        newDataFiltered[index][1],
+        hasDiff
+      ]
+      
     } ).filter((data:any) => data[3]));
   }
 
@@ -106,16 +146,16 @@ function App() {
 
   function downloadAsSqlCommand() {
     const value = filteredData.map((data)=>{
-      return `UPDATE ${databaseName} SET ${columnName} = "${data[1]}" WHERE ${pkColumnName} = ${data[0]};\n`;
+      return `UPDATE ${databaseName} SET ${columnName} = \'${data[1]}\' WHERE ${pkColumnName} = ${data[0]};\n`;
     })
     downloadFile(value, "diffUpdate.sql");
   }
 
   function downloadAsTxtCompare() {
     const value = filteredData.map((data)=>{
-      return `${data[0]},${data[1]},${data[2]}\n`;
+      return `${data[0]}|${data[1]}|${data[2]}\n`;
     })
-    downloadFile(value, "diffTxtCompare.txt");
+    downloadFile(value, "diffTxtCompare.csv");
   }
 
   function downloadFile(value:any,fileName:string){
@@ -153,9 +193,9 @@ function App() {
         <div>
           <label  htmlFor="slcDiffOpp">Select the type of diff </label>
           <select id="slcDiffOpp" value={slctDiffType} onChange={slctDiffTypeChange}>
-          <option value="diffPartial">Show diffs with partial different text</option>
+            <option value="diffPartial">Show diffs with partial different text</option>
+            <option value="diffMoreThan">Show diffs with more than text</option>
             <option value="diffTotal">Show diffs with totally different text</option>
-          
           </select>
         </div>
         <CSVReader    
@@ -174,6 +214,7 @@ function App() {
 
         {filteredData.length > 0 &&
           <>
+          <p>total of {filteredData.length}</p>
           <button id="downloadDiff" onClick={downloadAsSqlCommand}> Download diff as SQL command </button>
           <button id="downloadTxtComp" onClick={downloadAsTxtCompare}> Download diff with differences as CSV file txt </button>
           </>
