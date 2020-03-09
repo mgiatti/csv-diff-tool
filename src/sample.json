@@ -1,0 +1,8 @@
+{
+    "databaseName" : "test",
+    "columnName" : "testColumn",
+    "pkIdColumn" : "testId",
+    "colNum": "0",
+    "pkIdColNum" : "1",
+    "diffType": "diffPartial"
+}

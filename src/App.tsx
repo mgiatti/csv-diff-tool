@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import logo from './logo.svg';
 import './App.css';
 import CSVReader from 'react-csv-reader'
+import Files from 'react-files'
 
 function App() {
 
@@ -59,6 +59,8 @@ function App() {
       applyPartialDiff();
     }else if(slctDiffType === "diffMoreThan"){
       applyMoreThanDiff();
+    }else if(slctDiffType === "diffMoreThanNonPartial"){
+      applyMoreThanDiffNotPartial();
     }else if(slctDiffType === "diffTotal"){
       applyTotalDiff();
     }
@@ -128,6 +130,38 @@ function App() {
     } ).filter((data:any) => data[3]));
   }
 
+  function applyMoreThanDiffNotPartial(){
+    console.log("applyMoreThanDiffNotPartial");
+    const oldData = extractData(dataFrom);
+    const newData = extractData(dataTo);
+    const ids = oldData.map(data => data[pkKeyColNum]);
+    const newDataFiltered = newData.filter((data)=> ids.includes(data[pkKeyColNum])).sort();
+    oldData.sort();
+    setFilteredData(oldData.map((data:any, index:number)=>{
+      let hasDiff = false;
+      const oldDataStr = data[1];
+      const newDataStr:string = newDataFiltered[index][1];
+      if(oldDataStr && newDataStr){
+        const oldDataLength = oldDataStr.length;
+        const newDataLength = newDataStr.length;
+        if(oldDataLength > newDataLength){
+          console.log("entrou");
+          const subStr = oldDataStr.substring(0, newDataLength);
+          console.log(subStr);
+          console.log(newDataStr);
+          hasDiff = newDataStr !== subStr;
+        }
+      }
+      return [
+        data[0],
+        data[1],
+        newDataFiltered[index][1],
+        hasDiff
+      ]
+      
+    } ).filter((data:any) => data[3]));
+  }
+
   function applyTotalDiff(){
     const oldData = extractData(dataFrom);
     const newData = extractData(dataTo);
@@ -167,9 +201,45 @@ function App() {
     element.click();
   }
 
+  function onFilesChange(files:any){
+    console.log(files[0]);
+    const fileReader:FileReader = new FileReader();
+    fileReader.onload = ((result:any)=>{
+     extractDataFromJSON(JSON.parse(result.target.result));
+    });
+    fileReader.readAsText(files[0])
+  }
+
+  function extractDataFromJSON(data:any){
+    setDatabaseName(data.databaseName);
+    setPkKeyColNum(Number(data.pkIdColNum));
+    setColumnName(data.columnName);
+    setColNumDiff(Number(data.colNum));
+    setPkColumnName(data.pkIdColumn);
+    setSlctDiffType(data.diffType);
+  }
+
+  function onFilesError(){
+
+  }
+
   return (
     <div className="App">
       <header className="App-header">
+      <div className="files">
+        <Files
+          className='files-dropzone'
+          onChange={onFilesChange}
+          onError={onFilesError}
+          accepts={['application/json']}
+          maxFileSize={10000000}
+          minFileSize={0}
+          clickable
+        >
+          Upload a json file with all the config 
+        </Files>
+      </div>
+        
         <div>
           <label htmlFor="databaseName">Type the database name</label>
           <input id="databaseName" type="text" onChange={databaseNameChange} value={databaseName} />
@@ -195,7 +265,9 @@ function App() {
           <select id="slcDiffOpp" value={slctDiffType} onChange={slctDiffTypeChange}>
             <option value="diffPartial">Show diffs with partial different text</option>
             <option value="diffMoreThan">Show diffs with more than text</option>
+            <option value="diffMoreThanNonPartial">Show diffs with more than text but not partial</option>
             <option value="diffTotal">Show diffs with totally different text</option>
+            
           </select>
         </div>
         <CSVReader    
