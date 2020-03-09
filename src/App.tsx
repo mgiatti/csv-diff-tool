@@ -7,9 +7,9 @@ function App() {
 
   const [colNumDiff, setColNumDiff] = useState<number>(10);
   const [pkKeyColNum, setPkKeyColNum] = useState<number>(0);
-  const [databaseName, setDatabaseName] = useState<string>('BLUADMIN.IBV_FUNDING');
-  const [columnName, setColumnName] = useState<string>('REQUEST_DESCRIPTION');
-  const [pkColumnName, setPkColumnName] = useState<string>('ID_FUNDING');
+  const [databaseName, setDatabaseName] = useState<string>('');
+  const [columnName, setColumnName] = useState<string>('');
+  const [pkColumnName, setPkColumnName] = useState<string>('');
   const [slctDiffType, setSlctDiffType] = useState<string>('diffPartial');
   const [dataFrom, setDataFrom] = useState<any[]>([]);
   const [dataTo, setDataTo] = useState<any[]>([]);
@@ -182,14 +182,15 @@ function App() {
     const value = filteredData.map((data)=>{
       return `UPDATE ${databaseName} SET ${columnName} = \'${data[1]}\' WHERE ${pkColumnName} = ${data[0]};\n`;
     })
-    downloadFile(value, "diffUpdate.sql");
+    downloadFile(value, `${databaseName}_${slctDiffType}.sql`);
   }
 
   function downloadAsTxtCompare() {
+    console.log(filteredData);
     const value = filteredData.map((data)=>{
       return `${data[0]}|${data[1]}|${data[2]}\n`;
     })
-    downloadFile(value, "diffTxtCompare.csv");
+    downloadFile(value, `${databaseName}_${slctDiffType}.csv`);
   }
 
   function downloadFile(value:any,fileName:string){
